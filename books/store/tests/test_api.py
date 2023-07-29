@@ -2,6 +2,7 @@ from decimal import Decimal
 from django.contrib.auth.models import User
 from django.urls import reverse
 from rest_framework import status
+from rest_framework.exceptions import ErrorDetail
 from rest_framework.test import APITestCase
 
 from store.models import Book
@@ -11,9 +12,9 @@ from store.serializers import BookSerializer
 class BookTestAPI(APITestCase):
     def setUp(self):
         self.user = User.objects.create(username="test_user")
-        self.book_1 = Book.objects.create(name='test_1', price=25.5, author_name="Valera-1")
-        self.book_2 = Book.objects.create(name='test_2 Valera-1', price=450, author_name="Valera-2")
-        self.book_3 = Book.objects.create(name='test_3', price=320, author_name="Valera-3")
+        self.book_1 = Book.objects.create(name='test_1', price=25.5, author_name="Valera-1", owner=self.user)
+        self.book_2 = Book.objects.create(name='test_2 Valera-1', price=450, author_name="Valera-2", owner=self.user)
+        self.book_3 = Book.objects.create(name='test_3', price=320, author_name="Valera-3", owner=self.user)
 
     def test_get_books(self):
         url = reverse('book-list')
@@ -43,6 +44,7 @@ class BookTestAPI(APITestCase):
         book = Book.objects.get(id=response.data['id'])
         for key, value in payload.items():
             self.assertEqual(getattr(book, key), value)
+        self.assertEqual(self.user, Book.objects.last().owner)
 
     def test_update_book(self):
         url = reverse('book-detail', args=(self.book_1.id, ))
@@ -52,6 +54,39 @@ class BookTestAPI(APITestCase):
             'author_name': 'Valeraqaaa'
         }
         self.client.force_login(self.user)
+        response = self.client.put(url, payload)
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.book_1.refresh_from_db()
+        for key, value in payload.items():
+            self.assertEqual(getattr(self.book_1, key), value)
+
+    def test_update_book_not_owner(self):
+        self.user2 = User.objects.create(username="test_user2")
+        url = reverse('book-detail', args=(self.book_1.id, ))
+        payload = {
+            'name': 'updated_post',
+            'price': Decimal('65.00'),
+            'author_name': 'Valeraqaaa'
+        }
+        self.client.force_login(self.user2)
+        response = self.client.put(url, payload)
+
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertEqual({'detail': ErrorDetail(string='You do not have permission to perform this action.',
+                                                code='permission_denied')}, response.data)
+        self.book_1.refresh_from_db()
+        self.assertEqual(self.book_1.price, Decimal(25.5))
+
+    def test_update_book_staff(self):
+        self.user2 = User.objects.create(username="test_user2", is_staff=True)
+        url = reverse('book-detail', args=(self.book_1.id,))
+        payload = {
+            'name': 'updated_post',
+            'price': Decimal('65.00'),
+            'author_name': 'Valeraqaaa'
+        }
+        self.client.force_login(self.user2)
         response = self.client.put(url, payload)
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
