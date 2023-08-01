@@ -5,7 +5,7 @@ from rest_framework import status
 from rest_framework.exceptions import ErrorDetail
 from rest_framework.test import APITestCase
 
-from store.models import Book
+from store.models import Book, UserBookRelation
 from store.serializers import BookSerializer
 
 
@@ -145,6 +145,43 @@ class BookRelationAPI(APITestCase):
         response = self.client.patch(url, payload)
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.book_1.refresh_from_db()
-        self.assertTrue(self.book_1.like)
+        relation = UserBookRelation.objects.get(user=self.user,
+                                                book=self.book_1)
+        self.assertTrue(relation.like)
+
+        payload = {
+            'in_bookmarks': True,
+        }
+        response = self.client.patch(url, payload)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+        relation = UserBookRelation.objects.get(user=self.user,
+                                                book=self.book_1)
+        self.assertTrue(relation.in_bookmarks)
+
+    def test_rate(self):
+        url = reverse('userbookrelation-detail', args=(self.book_1.id, ))
+        payload = {
+            'rate': 3,
+        }
+        self.client.force_login(self.user)
+        response = self.client.patch(url, payload)
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        relation = UserBookRelation.objects.get(user=self.user,
+                                                book=self.book_1)
+        self.assertEqual(relation.rate, 3)
+
+    def test_rate_wrong(self):
+        url = reverse('userbookrelation-detail', args=(self.book_1.id, ))
+        payload = {
+            'rate': 7,
+        }
+        self.client.force_login(self.user)
+        response = self.client.patch(url, payload)
+
+        self.assertEqual({'rate': [ErrorDetail(string='"7" is not a valid choice.', code='invalid_choice')]}, response.data)
+        relation = UserBookRelation.objects.get(user=self.user,
+                                                book=self.book_1)
+        self.assertEqual(relation.rate, None)
 

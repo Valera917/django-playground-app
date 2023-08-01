@@ -1,11 +1,13 @@
 from django.shortcuts import render
 from django_filters.rest_framework import DjangoFilterBackend
+from rest_framework import mixins
 from rest_framework.filters import SearchFilter, OrderingFilter
-from rest_framework.viewsets import ModelViewSet
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.viewsets import ModelViewSet, GenericViewSet
 
-from store.models import Book
+from store.models import Book, UserBookRelation
 from store.permissions import IsOwnerOrStaffORReadOnly
-from store.serializers import BookSerializer
+from store.serializers import BookSerializer, UserBookRelationSerializer
 
 
 class BookViewSet(ModelViewSet):
@@ -20,6 +22,19 @@ class BookViewSet(ModelViewSet):
     def perform_create(self, serializer):
         serializer.validated_data['owner'] = self.request.user
         serializer.save()
+
+
+class UserBookRelationView(mixins.UpdateModelMixin, GenericViewSet):
+    queryset = UserBookRelation.objects.all()
+    serializer_class = UserBookRelationSerializer
+    permission_classes = [IsAuthenticated]
+    lookup_field = 'book'
+
+    def get_object(self):
+        obj, _ = UserBookRelation.objects.get_or_create(user=self.request.user,
+                                                        book_id=self.kwargs['book'])
+
+        return obj
 
 
 def auth(request):
