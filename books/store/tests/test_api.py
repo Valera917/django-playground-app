@@ -127,3 +127,24 @@ class BookTestAPI(APITestCase):
                                           self.book_2], many=True).data
         self.assertEqual(response.data, serialized_data)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+
+class BookRelationAPI(APITestCase):
+    def setUp(self):
+        self.user = User.objects.create(username="test_user")
+        self.user2 = User.objects.create(username="test_user2")
+        self.book_1 = Book.objects.create(name='test_1', price=25.5, author_name="Valera-1", owner=self.user)
+        self.book_2 = Book.objects.create(name='test_2 Valera-1', price=450, author_name="Valera-2", owner=self.user)
+
+    def test_like(self):
+        url = reverse('userbookrelation-detail', args=(self.book_1.id, ))
+        payload = {
+            'like': True,
+        }
+        self.client.force_login(self.user)
+        response = self.client.patch(url, payload)
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.book_1.refresh_from_db()
+        self.assertTrue(self.book_1.like)
+
