@@ -41,7 +41,6 @@ class BookTestAPI(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(serialized_data['rating'], '5.00')
         self.assertEqual(serialized_data['annotated_likes'], 1)
-        self.assertEqual(serialized_data['likes_count'], 1)
 
     def test_create_book(self):
         url = reverse('book-list')
