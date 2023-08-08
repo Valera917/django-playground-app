@@ -23,7 +23,7 @@ class BookTestAPI(APITestCase):
         response = self.client.get(url)
         books = Book.objects.all().annotate(
             annotated_likes=Count(Case(When(userbookrelation__like=True, then=1))),
-            rating=Avg('userbookrelation__rate'))
+            rating=Avg('userbookrelation__rate')).order_by('id')
         serialized_data = BookSerializer(books, many=True).data
         self.assertEqual(response.data, serialized_data)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
@@ -130,7 +130,7 @@ class BookTestAPI(APITestCase):
         response = self.client.get(url, data={'search': 'Valera-1'})
         books = Book.objects.filter(id__in=[self.book_1.id, self.book_2.id]).annotate(
             annotated_likes=Count(Case(When(userbookrelation__like=True, then=1))),
-            rating=Avg('userbookrelation__rate'))
+            rating=Avg('userbookrelation__rate')).order_by('id')
         serialized_data = BookSerializer(books, many=True).data
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(len(response.data), 2)
