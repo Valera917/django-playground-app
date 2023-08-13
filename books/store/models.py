@@ -8,6 +8,7 @@ class Book(models.Model):
     author_name = models.CharField(max_length=255)
     owner = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, related_name='my_books')
     readers = models.ManyToManyField(User, through='UserBookRelation', related_name='books')
+    rating = models.DecimalField(max_digits=3, decimal_places=2, null=True, default=None)
 
     def __str__(self):
         return f'{self.name}'
