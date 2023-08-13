@@ -15,6 +15,10 @@ class Book(models.Model):
 
 
 class UserBookRelation(models.Model):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.old_rate = self.rate
+
     RATE_CHOICES = (
         (1, 'Ok'),
         (2, 'Fine'),
@@ -31,3 +35,12 @@ class UserBookRelation(models.Model):
 
     def __str__(self):
         return f'{self.user.username}: {self.book}, Rate: {self.rate}'
+
+    def save(self, *args, **kwargs):
+        is_creating = not self.pk
+
+        super().save(*args, **kwargs)
+
+        if self.old_rate != self.rate or is_creating:
+            from store.services import set_rating
+            set_rating(self.book)
